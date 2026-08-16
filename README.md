@@ -2,6 +2,13 @@
 
 A simple Go HTTP server that serves an HTML page, designed to run in Docker.
 
+## Related Projects
+
+| Branch     | Project                           | Description                                                    |
+|------------|-----------------------------------|----------------------------------------------------------------|
+| `main`     | `goserver`                        | This Go HTTP server                                            |
+| `pyserver` | [`pyserver/`](pyserver/README.md) | Python script that analyzes character/word frequency in a book |
+
 ## Requirements
 
 - Go 1.26+
