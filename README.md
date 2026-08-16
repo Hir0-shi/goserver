@@ -7,14 +7,23 @@ A simple Go HTTP server that serves an HTML page, designed to run in Docker.
 - Go 1.26+
 - Docker
 
+## Configuration
+
+The server port is configurable via the `PORT` environment variable.
+
 ## Running Locally
 
 ```bash
+export PORT="8999"
 go build
 ./goserver
 ```
 
-The server starts on port `8010`.
+Expected output:
+
+```
+server started on 8999
+```
 
 ## Endpoints
 
@@ -36,10 +45,11 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
 
 ### Dockerfile
 
-The Dockerfile uses Alpine Linux and runs as a non-root user:
+The Dockerfile uses Alpine Linux, sets the port via `ENV`, and runs as a non-root user:
 
 ```dockerfile
 FROM alpine:latest
+ENV PORT=8991
 
 RUN adduser -D -h /srv goserver
 
@@ -50,47 +60,95 @@ USER goserver
 CMD ["/srv/goserver"]
 ```
 
-Running as a non-root user is a security best practice — it limits the impact if the container is compromised.
+`ENV PORT=8991` sets the port inside the container. Running as a non-root user is a security best practice — it limits the impact if the container is compromised.
 
 ### Building and Running
 
 ```bash
 docker build . -t goserver:latest
-docker run -p 8010:8010 goserver
+docker run -p 8991:8991 goserver
+```
+
+Expected output:
+
+```
+server started on 8991
 ```
 
 ### Testing
 
 ```bash
-curl localhost:8010
+curl localhost:8991
 ```
 
-## Verification
+Expected response:
 
-Confirm the server is running inside a container:
-
-```bash
-$ docker ps
-CONTAINER ID   IMAGE       COMMAND           PORTS                   STATUS       NAMES
-60d56208be78   goserver    "/srv/goserver"   0.0.0.0:8010->8010/tcp   Up 2 minutes   hopeful_mclaren
-```
-
-Confirm the process runs as a non-root user:
-
-```bash
-$ docker exec -it 60d56208be78 sh
-/ $ id
-uid=1000(goserver) gid=1000(goserver) groups=1000(goserver)
-```
-
-Confirm the endpoint responds correctly:
-
-```bash
-$ curl localhost:8010
+```html
 <html>
 <head></head>
 <body>
 	<p> Hello from Docker! I'm a Go server. </p>
 </body>
 </html>
+```
+
+## Full Workflow
+
+### Local run
+
+```bash
+$ export PORT="8999"
+$ go build
+$ ./goserver
+server started on 8999
+
+$ curl localhost:8999
+<html>
+<head></head>
+<body>
+	<p> Hello from Docker! I'm a Go server. </p>
+</body>
+</html>
+```
+
+### Docker run
+
+```bash
+$ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+$ docker build . -t goserver:latest
+[+] Building 1.5s (8/8) FINISHED
+ => [internal] load build definition from Dockerfile
+ => => transferring dockerfile: 172B
+ => [internal] load metadata for docker.io/library/alpine:latest
+ => [internal] load .dockerignore
+ => => transferring context: 2B
+ => CACHED [1/3] FROM docker.io/library/alpine:latest@sha256:28bd5fe8b56d
+ => [internal] load build context
+ => => transferring context: 8.57MB
+ => [2/3] RUN adduser -D -h /srv goserver
+ => [3/3] COPY goserver /srv/goserver
+ => exporting to image
+ => => exporting layers
+ => => exporting manifest sha256:1881eca3ac6a
+ => => exporting config sha256:96e13639ecc2
+ => => naming to docker.io/library/goserver:latest
+
+$ docker run -p 8991:8991 goserver
+server started on 8991
+
+$ curl localhost:8991
+<html>
+<head></head>
+<body>
+	<p> Hello from Docker! I'm a Go server. </p>
+</body>
+</html>
+```
+
+### Verify non-root user
+
+```bash
+$ docker exec -it <container_id> sh
+/ $ id
+uid=1000(goserver) gid=1000(goserver) groups=1000(goserver)
 ```
