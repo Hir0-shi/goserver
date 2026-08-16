@@ -1,38 +1,27 @@
 # pyserver
 
-A Python script that analyzes the character and word frequency of a text file.
+A Python script that analyzes the character and word frequency of a text file, with Docker support.
 
-Based on the [Boot.dev Docker course](https://boot.dev) lesson: *Python Script*.
+## Running Locally
 
-## Requirements
-
-- Python 3.10+
-- pyenv (recommended for managing Python versions)
-
-## Setup
-
-### Using pyenv
+### Setup
 
 ```bash
 pyenv install 3.14.7
 pyenv virtualenv 3.14.7 pyserver
 pyenv local pyserver
-```
 
-### Download the book
-
-```bash
 mkdir books
 wget -O books/frankenstein.txt https://raw.githubusercontent.com/asweigart/codebreaker/master/frankenstein.txt
 ```
 
-## Running
+### Run
 
 ```bash
 python3 main.py
 ```
 
-Expected output:
+### Output
 
 ```
 --- Begin report of books/frankenstein.txt ---
@@ -67,6 +56,54 @@ The 'z' character was found 243 times
 --- End report ---
 ```
 
+## Docker
+
+### Dockerfile.py
+
+Uses Alpine Linux with Python3 installed via apk, runs as a non-root user (`pyserver`), sets `WORKDIR /srv` so the relative path `books/frankenstein.txt` resolves correctly, and copies code + data into the container.
+
+```dockerfile
+FROM alpine:latest
+
+RUN apk add --no-cache python3
+
+RUN adduser -D -h /srv pyserver
+
+WORKDIR /srv
+
+COPY --chown=pyserver:pyserver main.py .
+COPY --chown=pyserver:pyserver books/ .
+
+USER pyserver
+
+CMD ["python3", "main.py"]
+```
+
+| Directive | Why |
+|-----------|-----|
+| `--chown=pyserver:pyserver` | Sets ownership during `COPY`, avoiding a separate `RUN chown -R ...` layer that duplicates file data |
+| `WORKDIR /srv` before `COPY` | Allows relative paths (`.`) in `COPY`, keeping the file cleaner |
+| `USER pyserver` | Drops root privileges — the script never runs as root |
+
+### Build and Run
+
+```bash
+docker build -t bookbot -f Dockerfile.py .
+docker run bookbot
+```
+
+### Output
+
+Same as local run above — full character frequency report for Frankenstein.
+
+### Verify Non-Root User
+
+```bash
+docker exec -it <container_id> sh
+/srv $ id
+uid=1000(pyserver) gid=1000(pyserver) groups=1000(pyserver)
+```
+
 ## How It Works
 
 | Function                          | Purpose                                                     |
@@ -77,8 +114,3 @@ The 'z' character was found 243 times
 | `chars_dict_to_sorted_list(dict)` | Converts the frequency map to a sorted list                 |
 | `sort_on(dict)`                   | Sort key — sorts by character count descending              |
 | `main()`                          | Orchestrates everything and prints the report               |
-
-## Notes
-
-- This project lives on the `pyserver` branch
-- The main `main` branch contains the Go server (`goserver`)
